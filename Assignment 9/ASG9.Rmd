@@ -1,0 +1,159 @@
+---
+title: "MAT 443 - HW 9"
+author: "ERIC AGYEMANG"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## QUESTION 3##
+a.
+```{r}
+x1 = c(3, 2, 4, 1, 2, 4, 4)
+x2 = c(4, 2, 4, 4, 1, 3, 1)
+colors = c("magenta", "magenta", "magenta", "magenta", "cyan", "cyan", "cyan")
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+```
+
+b. The maximal classifier has to fall in between #2,#3,#5,#6
+so (2,2),(4,4)
+   (2,1),(4,3)
+  =>(2,1.5,4,3.5)
+  b=(3.5-1.5)/(4-2)=1
+  a=1.5-2= -0.5
+```{r}  
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+abline(-0.5, 1)
+```
+-0.5+X1+X2>0
+
+c. The classification rules are,
+     -0.5+X1+X2>0 - magenta
+and,
+     -0.5+X1+X2<=0 - cyan
+
+
+d. The margin minimum distance from the support vectors.However we know that the distance is simply Y(B0+B1X+B2X2) then we only need to eveluate the function and choose the minumum
+  
+  [1] 0.5
+
+We now plot the decision boundary with two dotted lines and can be obtained by shifting the intercept of the decision boundary
+```{r} 
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+abline(-0.5, 1)
+abline(-1, 1, lty = 2)
+abline(0, 1, lty = 2)
+```
+
+e. There are four support vector for maximal margin classifier
+```{r} 
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+abline(-0.5, 1)
+arrows(2, 1, 2, 1.5)
+arrows(2, 2, 2, 1.5)
+arrows(4, 4, 4, 3.5)
+arrows(4, 3, 4, 3.5)
+```
+
+
+f. There is a slight change of the seventh obseravtion and is not support vector.Therefore a small permutation in its position doesnt change the optimal boundary or have any effect on the maximal margin hyperline
+
+
+g. The equation below actually separates all observations, but it is not the optimal boindary because its margin is smaller
+-0.8-X1+X2>0
+
+
+```{r}
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+abline(-0.8, 1)
+```
+
+```{r}
+plot(x1, x2, col = colors, xlim = c(0, 5), ylim = c(0, 5))
+points(c(4), c(2), col = c("magenta"))
+```
+
+## QUESTION 5##
+a.
+```{r}
+x1=runif(500)-0.5
+x2=runif(500)-0.5
+y=1*(x1^2-x2^2 > 0 )
+```
+
+b. Plotting the decion boundary
+```{r}
+plot(x1,x2,col=ifelse(y,'magenta','cyan'))
+```
+
+c.
+```{r}
+library(glmnet)
+lm.fit = glm(y ~ x1 + x2, family = binomial)
+summary(lm.fit)
+```
+Both variables above are significantly for predicting y
+
+
+d.
+```{r}
+data = data.frame(x1 = x1, x2 = x2, y = y)
+lm.prob = predict(lm.fit, data, type = "response")
+lm.pred = ifelse(lm.prob > 0.52, 1, 0)
+data.pos = data[lm.pred == 1, ]
+data.neg = data[lm.pred == 0, ]
+plot(data.pos$x1, data.pos$x2, col = "cyan", xlab = "X1", ylab = "X2", pch = "+")
+points(data.neg$x1, data.neg$x2, col = "magenta", pch = 4)
+```
+The probability and model and probability threshold of 0.5,all points on the plot are classified to single class and no decision boundary.As we can see above the boundry is linear
+
+
+e. We now use squares,product interction terms to fit the model.
+```{r}
+lm.fit = glm(y ~ poly(x1, 2) + poly(x2, 2) + I(x1 * x2), data = data, family = binomial)
+
+```
+
+
+f.
+```{r}
+lm.prob = predict(lm.fit, data, type = "response")
+lm.pred = ifelse(lm.prob > 0.5, 1, 0)
+data.pos = data[lm.pred == 1, ]
+data.neg = data[lm.pred == 0, ]
+plot(data.pos$x1, data.pos$x2, col = "cyan", xlab = "X1", ylab = "X2", pch = "+")
+points(data.neg$x1, data.neg$x2, col = "magenta", pch = 4)
+```
+
+
+g. The same is done as before, but now with a linear SVM.With the linear kernel has low cost fails to find non linear decision and classifies all point to a single class
+```{r}
+library(e1071)
+svm.fit = svm(as.factor(y) ~ x1 + x2, data, kernel = "linear", cost = 0.1)
+svm.pred = predict(svm.fit, data)
+data.pos = data[svm.pred == 1, ]
+data.neg = data[svm.pred == 0, ]
+plot(data.pos$x1, data.pos$x2, col = "cyan", xlab = "X1", ylab = "X2", pch = "+")
+points(data.neg$x1, data.neg$x2, col = "magenta", pch = 4)
+```
+
+
+h. So the non-linear decision boundary on predicted lables closely resembles the true decision boundary
+```{r}
+svm.fit = svm(as.factor(y) ~ x1 + x2, data, gamma = 1)
+svm.pred = predict(svm.fit, data)
+data.pos = data[svm.pred == 1, ]
+data.neg = data[svm.pred == 0, ]
+plot(data.pos$x1, data.pos$x2, col = "cyan", xlab = "X1", ylab = "X2", pch = "+")
+points(data.neg$x1, data.neg$x2, col = "magenta", pch = 4)
+```
+
+
+i.
+From the expperiments and plots it obvious the polynomial logit model performs much better than SVM with polynomial kernel on the training data.The experiment also enforces the idea the SVMs with non linear kernel are extremely powerful in finding non linear boundary.Adding interaction terms to logistic regression seems to give them same power as radial basis kernels.Regardless,there is some manual efforts and tunning in picking right interaction terms.

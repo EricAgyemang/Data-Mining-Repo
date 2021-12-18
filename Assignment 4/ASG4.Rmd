@@ -1,0 +1,126 @@
+---
+title: "Extra work"
+author: "ERIC AGYEMANG"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/josephmensah/Downloads/")
+```
+
+
+```{r loadData, echo=FALSE}
+education<-read.csv("Data.csv")
+```
+
+##REGRESSION MODELLING PROBLEM USING CARET##
+
+
+```{r}
+library(caret)
+library(lattice)
+library(ggplot2)
+library(mlbench)
+library(survival)
+library(parallel)
+library(splines)
+library(plyr)
+library(gbm)
+library(glmnet)
+library(MASS)
+library(C50)
+library(naivebayes)
+library(klaR)
+library(kernlab)
+library(Matrix)
+library(foreach)
+```
+
+
+Loaind data set.
+```{r}
+data("iris")
+iris$Species = as.factor(iris$Species)
+head(iris)
+```
+
+Preprocessing
+```{r}
+sum(is.na(iris))
+```
+
+Getting all list of algorithm that CARET supports.
+```{r}
+names(getModelInfo())
+```
+
+Splitting with CARET,we create testing and training data set using CARET.This will enable us develop and evaluate our model.
+```{r}
+inTrain = createDataPartition(y = iris$Species, p = .75, list = FALSE)
+training = iris[inTrain,]
+testing = iris[-inTrain,]
+```
+
+Next,we create the cross validationg method that will be used by CARET to create the training sets.
+```{r}
+fitControl <- trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 10)
+```
+
+Now we ready to develop the model.we make use of the train function in CARET to regress the dependant variable onto all of other covariates.
+```{r}
+set.seed(12345)
+gbmFit1 <- train(Species ~ ., data = training, 
+                 method = "gbm", 
+                 trControl = fitControl,
+                 verbose = FALSE)
+```
+
+We use CARET to choose our final model thus interaction depth of 1,number trees at 50, accuracay of 94% and a kappa of 90%
+```{r}
+gbmFit1
+plot(gbmFit1)
+```
+
+Using the training model to make our predictions.As we can see there is 99% probability that the first flow in the data set is a setosa species.
+
+```{r}
+predict(gbmFit1, newdata = head(testing), type = "prob")
+```
+
+```{r}
+summary(education)
+```
+
+```{r}
+set.seed(17)
+# Stratified sampling
+TrainingDataIndex <- createDataPartition(education$Class, p=0.75, list = FALSE)
+# Create Training Data 
+trainingData <- education[TrainingDataIndex,]
+testData <- education[-TrainingDataIndex,]
+TrainingParameters <- trainControl(method = "repeatedcv", number = 10, repeats=10)
+```
+
+```{r}
+# Train a model with above parameters. We will use C5.0 algorithm
+DecTreeModel <- train(Class ~ ., data = trainingData, 
+                      method = "C5.0",
+                      preProcess=c("scale","center"),
+                      trControl= TrainingParameters,
+                      na.action = na.omit
+)
+
+#Predictions
+DTPredictions <-predict(DecTreeModel, testData, na.action = na.pass)
+# Print confusion matrix and results
+cmTree <-confusionMatrix(DTPredictions, testData$Class)
+print(cmTree)
+```

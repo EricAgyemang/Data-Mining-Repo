@@ -1,0 +1,247 @@
+---
+title: "MAT 443 - HW1"
+author: "ERIC AGYEMANG"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+## Question 5
+
+```{r}
+p= c(0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, 0.75)
+```
+#There are two commmon ways to combine these results together into a single class prediction.One is amajority approach and the second is average approach.
+
+## Majority Approach
+```{r}
+sum(p >= 0.5) > sum(p < 0.5)
+
+```
+
+#The number of red predictions is greater than the number of green predictions based on a 50% threshold,thus RED
+
+## Average Approach
+```{r}
+mean(p)
+```
+
+#The average of the probabilities is less than the 50% threshol,thus GREEN
+
+
+## Question 8
+#a. 
+#splitting the data set into training and test set.
+```{r}
+library(ISLR)
+set.seed(1)
+train <-sample(1:nrow(Carseats), nrow(Carseats) / 2)
+Carseats.train = Carseats[train, ]
+Carseats.test = Carseats
+```
+
+#b.
+#we now fit a regression tree to the training set.
+```{r}
+library(tree)
+tree.carseats = tree(Sales~., data = Carseats.train)
+summary(tree.carseats)
+```
+
+#ploting the tree 
+```{r}
+plot(tree.carseats)
+text(tree.carseats, pretty= 0)
+```
+
+#Predicting error rate
+```{r}
+pred.carseats = predict(tree.carseats, newdata = Carseats.test)
+mean((pred.carseats - Carseats.test$Sales)^2)
+```
+
+#we may conclude that the Test MSE is about 4.15
+
+#c.
+#we use cross-validation to determine the optimal level of the tree complexity.
+```{r}
+cv.carseats<-cv.tree(tree.carseats)
+plot(cv.carseats$size, cv.carseats$dev, type = "b")
+tree.min<- which.min(cv.carseats$dev)
+points(tree.min, cv.carseats$dev[tree.min], col = "red",cex = 2, pch = 20)
+```
+
+#In this Particular case,the tree of size 8 is selected by cross-validation.We now prune the tree to obtain the 8-node tree.
+```{r}
+prune.carseats= prune.tree(tree.carseats, best =8)
+plot(prune.carseats)
+text(prune.carseats,pretty = 0)
+```
+```{r}
+yhat <- predict(prune.carseats, newdata = Carseats.test)
+mean((yhat - Carseats.test$Sales)^2)
+```
+#We now see that prunning the tree will increase the test MSE to 4.2
+
+#d.
+#using the bagging approach in orser to analyze the data set.
+```{r}
+library(randomForest)
+bag.carseats= randomForest(Sales~., data = Carseats.train,mtry=10, ntree = 500, importance= TRUE)
+yhat.bag= predict(bag.carseats, newdata = Carseats.test)
+mean((yhat.bag - Carseats.test$Sales)^2)
+```
+```{r}
+importance(bag.carseats)
+```
+
+#We see that bagging decreases the Test MSE to 2.6.We also see that Price,ShelvecLoc and Age are the three most important predictors of sale
+
+#e.
+#Using random forests to analyze the dataset.
+```{r}
+rf.carseats= randomForest(Sales~., data = Carseats.train, mtry=3, ntree = 500, importance = TRUE)
+yhat.rf= predict(rf.carseats, newdata = Carseats.test)
+mean((yhat.rf - Carseats.test$Sales)^2)
+```
+
+#We obtain our m = square root of p, we have a test MSE OF 1.97
+
+```{r}
+importance(rf.carseats)
+```
+
+#Again we conclude that,in this scenario, Price and ShelveLoc are the two most important variables.
+
+
+## Question 10
+
+We now use the boosting to predict salary in the hitters data set.
+
+#a.
+#Removing the observations for whom the salary information and the log transform the salaries
+```{r}
+Hitters <- na.omit(Hitters)
+Hitters$Salary <- log(Hitters$Salary)
+```
+
+#b.
+#Creating training set of first 200 obseravtions and test set consisting of the remaining observations.
+```{r}
+train = 1:200
+Hitters.train = Hitters[train, ]
+Hitters.test = Hitters[-train, ]
+```
+#c.
+#Now we perform boosting model on the training set
+```{r}
+library(gbm)
+set.seed(1)
+pows <- seq(-10, -0.2, by = 0.1)
+lambdas <- 10^pows
+train.err <- rep(NA, length(lambdas))
+for (i in 1:length(lambdas)) {
+    boost.hitters <- gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian", n.trees = 1000, shrinkage = lambdas[i])
+    pred.train <- predict(boost.hitters, Hitters.train, n.trees = 1000)
+    train.err[i] <- mean((pred.train - Hitters.train$Salary)^2)
+}
+plot(lambdas, train.err, type = "b", xlab = "Shrinkage values", ylab = "Training MSE")
+```
+
+#d.
+#Plotting with diffeent type of shrinkage values on x-axis and corresponding test set MSE on the y-axis
+```{r}
+set.seed(1)
+test.err <- rep(NA, length(lambdas))
+for (i in 1:length(lambdas)) {
+  boost.hitters <- gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian", n.trees = 1000, 
+                         shrinkage = lambdas[i])
+yhat <- predict(boost.hitters, Hitters.test, n.trees = 1000)
+    test.err[i] <- mean((yhat - Hitters.test$Salary)^2)
+}
+plot(lambdas, test.err, type = "b", xlab = "Shrinkage values", ylab = "Test MSE")
+```
+
+```{r}
+min(test.err)
+```
+
+```{r}
+lambdas[which.min(test.err)]
+```
+#We obtain the minimum test MSE to be 0.25 and Lambda = 0.079
+
+#e.
+#Comparison of the test MSE of boosting
+```{r}
+library(glmnet)
+```
+```{r}
+fit1 <- lm(Salary ~ ., data = Hitters.train)
+pred1 <- predict(fit1, Hitters.test)
+mean((pred1 - Hitters.test$Salary)^2)
+```
+
+```{r}
+x <- model.matrix(Salary ~ ., data = Hitters.train)
+x.test <- model.matrix(Salary ~ ., data = Hitters.test)
+y <- Hitters.train$Salary
+fit2 <- glmnet(x, y, alpha = 0)
+pred2 <- predict(fit2, s = 0.01, newx = x.test)
+mean((pred2 - Hitters.test$Salary)^2)
+```
+#We can see in this case the test MSE for boosting is lower than for linear regression and ridge regression.
+
+#f.
+#Selecting variables that appear to be the most important predictors in the boosted model.
+```{r}
+library(gbm)
+```
+
+```{r}
+boost.hitters <- gbm(Salary ~ ., data = Hitters.train, distribution = "gaussian", n.trees = 1000, shrinkage = lambdas[which.min(test.err)])
+summary(boost.hitters)
+```
+
+#g.
+```{r}
+set.seed(1)
+bag.hitters <- randomForest(Salary ~ ., data = Hitters.train, mtry = 19, ntree = 500)
+yhat.bag <- predict(bag.hitters, newdata = Hitters.test)
+mean((yhat.bag - Hitters.test$Salary)^2)
+```
+#Now we conclude that, the test MSE for bagging is 0.23, which is slightly lower than the test MSE for boosting.
+
+
+summary(college)
+pairs(college[, 1:10])
+boxplot(college$Outstate ~ college$Private, col = c("blue", "green"), main = "Outstate versus Private", xlab = "Private", ylab = "Outstate")
+Elite = rep("No", nrow(college))
+Elite[college$Top10perc > 50] = "Yes"
+Elite = as.factor(Elite)
+college = data.frame(college, Elite)
+summary(college$Elite)
+summary(college)
+pairs(college[, 1:10])
+par(mfcol = c(2, 3))
+# Apps with 5 bins
+hist(college$Accept, breaks = 6, freq = TRUE, col = "blue", main = "Histogram",
+     xlab = "Accept", ylab = "Value")
+hist(college$Accept, breaks = 10, freq = TRUE, col = "green", main = "Histogram",
+     xlab = "Accept", ylab = "Value")
+hist(college$Enroll, breaks = 6, freq = TRUE, col = "blue", main = "Histogram",
+     xlab = "Enroll", ylab = "Value")
+hist(college$Enroll, breaks = 10, freq = TRUE, col = "green", main = "Histogram",
+     xlab = "Enroll", ylab = "Value")
+hist(college$Top10perc, breaks = 6, freq = TRUE, col = "blue", main = "Histogram",
+     xlab = "Top10perc", ylab = "Value")
+hist(college$Top10perc, breaks = 10, freq = TRUE, col = "green", main = "Histogram",
+     xlab = "Top10perc", ylab = "Value")
