@@ -48,8 +48,6 @@ pred.newridge<-predict(ridge,s=bestlam.ridge,newx =test.mat)
 mean((test$Apps-pred.newridge)^2)
 
 
-
-
 lasso<-glmnet(train.mat,train$Apps,alpha=1,lambda=grid,thresh = 1e-12)
 
 #doing cross validation on model
@@ -59,7 +57,6 @@ cv.lasso<-cv.glmnet(train.mat,train$Apps,alpha=1,lambda=grid,thresh=1e-12)
 #finding the lambda for which cv error is minimum on training data
 bestlam.lasso<-cv.lasso$lambda.min
 bestlam.lasso
-
 
 
 #using the lambda value obtained from cross validation for the lasso model directly on test data set to get the predicted values
@@ -77,9 +74,6 @@ predict(lasso,s=bestlam,type="coefficients")
 
 coef.lasso <- predict(fit.lasso, type="coefficients", s=lambda)[1:ncol(College),]
 coef.lasso[coef.lasso != 0]
-
-
-
 
 
 library(pls)
